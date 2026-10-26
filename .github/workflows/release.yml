@@ -44,7 +44,9 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           ./gradlew --console=plain :app:testDebugUnitTest :app:assembleRelease \
             -Psoulacy.versionName="$version" -Psoulacy.versionCode="${{ github.run_number }}"
-          apk="soulacy-android-$version.apk"
+          # A fixed asset name keeps the public link stable:
+          # releases/latest/download/soulacy-android.apk always serves the newest release.
+          apk="soulacy-android.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk"
           sha256sum "$apk" > "$apk.sha256"

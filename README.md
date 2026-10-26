@@ -111,17 +111,25 @@ checks the gateway every 15 minutes in the background and every few seconds whil
 ## Releasing
 
 `.github/workflows/release.yml` runs on a `v*` tag. It builds a signed APK, prints the signing
-certificate and attaches the APK and its `.sha256` to a **draft** GitHub Release. The draft
-is published by hand.
+certificate and attaches `soulacy-android.apk` and `soulacy-android.apk.sha256` to a **draft**
+GitHub Release. The draft is published by hand. The asset names never change, so
+`https://github.com/vmodekurti/soulacy-android/releases/latest/download/soulacy-android.apk`
+(linked from soulacy.io as `soulacy.io/android.apk`) always serves the newest published release.
+
+Create the keystore once, on your own machine:
+
+```bash
+keytool -genkeypair -v -keystore soulacy-release.jks -alias soulacy -keyalg RSA -keysize 4096 -validity 10000
+```
 
 The signing key is yours to create and keep. Never commit it. Generate it once on your own
 machine and store it only as repository secrets:
 
 | Secret | Value |
 |---|---|
-| `SOULACY_KEYSTORE_BASE64` | `base64 < release.jks` |
+| `SOULACY_KEYSTORE_BASE64` | `base64 < soulacy-release.jks` |
 | `SOULACY_KEYSTORE_PASSWORD` | keystore password |
-| `SOULACY_KEY_ALIAS` | key alias |
+| `SOULACY_KEY_ALIAS` | key alias (`soulacy` above) |
 | `SOULACY_KEY_PASSWORD` | key password |
 
 Keep an offline backup of the keystore. Android only installs updates signed with the same key.
@@ -163,6 +171,5 @@ confirmation:
   lock in the app.
 - **No instrumented UI tests yet.** Unit tests cover the API, pairing, pinning, secret sealing
   and sync layers.
-- **No public download yet.** The APK is not published anywhere. Public download needs a public
-  host: this repository is private, so a release asset here is not downloadable from
-  soulacy.io.
+- **No published release yet.** soulacy.io links to this repository's latest release, which only
+  works once the repository is public and a signed release has been published.
