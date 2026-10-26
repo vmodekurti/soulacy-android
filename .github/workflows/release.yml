@@ -48,7 +48,9 @@ jobs:
           # releases/latest/download/soulacy-android.apk always serves the newest release.
           apk="soulacy-android.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
-          "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$apk"
+          # Runners ship several build-tools versions; use the newest apksigner.
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n1)apksigner"
+          "$apksigner" verify --print-certs "$apk"
           sha256sum "$apk" > "$apk.sha256"
           echo "APK=$apk" >> "$GITHUB_ENV"
       - name: Clean up keystore
