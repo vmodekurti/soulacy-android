@@ -1,0 +1,13 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.kotlin/
+# Signing material and Firebase config never belong in the repo.
+*.jks
+*.keystore
+keystore.properties
+google-services.json
