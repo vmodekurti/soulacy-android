@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A self-hosted gateway is often reached over plain HTTP on a home network,
+     a VPN or a tailnet, so cleartext is allowed; the app warns before pairing
+     with an unencrypted address. User-installed CAs are trusted so a gateway
+     behind a private CA works; a pinned gateway key overrides both. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
