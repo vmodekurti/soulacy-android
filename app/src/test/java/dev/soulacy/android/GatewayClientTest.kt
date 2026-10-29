@@ -69,6 +69,13 @@ class GatewayClientTest {
         assertEquals("chat", req.url.queryParameter("surface"))
     }
 
+    @Test fun `an agent disabled with a structured reason does not break the list`() = runTest {
+        reply(200, """{"agents":[{"id":"a","name":"A","enabled":false},{"id":"b","enabled":true}],"interfaces":{"a":{"chat_eligible":true,"surfaces":["chat"],"disabled_reason":{"field":"llm.model","problem":"model not found","fix":"pull it"}}}}""")
+        val res = client.agents()
+        assertEquals(listOf("a", "b"), res.agents.map { it.id })
+        assertEquals("llm.model", res.interfaces["a"]!!.disabledReason!!.jsonObject["field"]!!.jsonPrimitive.content)
+    }
+
     @Test fun `approvals list and decisions`() = runTest {
         reply(200, """{"approvals":[{"call_id":"c/1","tool":"files.delete","args":{"path":"/tmp/x"},"agent_id":"genie","session_id":"s","created_at":"2026-10-26T10:00:00Z"}]}""")
         val list = client.approvals()

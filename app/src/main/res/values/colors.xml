@@ -1,3 +1,6 @@
 <resources>
-    <color name="brand">#5B4BDB</color>
+    <!-- The app icon's blue, sampled from the iOS SoulacyIcon. -->
+    <color name="brand_icon">#4A48FC</color>
+    <color name="canvas_light">#FFFFFF</color>
+    <color name="canvas_dark">#0B1B2B</color>
 </resources>

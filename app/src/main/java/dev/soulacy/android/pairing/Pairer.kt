@@ -25,7 +25,7 @@ class Pairer(
         val redeemed = try {
             GatewayClient(link.baseUrl, fingerprint = link.fingerprint, http = http).redeem(link.code)
         } catch (e: Exception) {
-            return PairingOutcome.Failed(e.message ?: "Could not reach the gateway at ${link.baseUrl}")
+            return PairingOutcome.Failed(ConnectionProblem.describe(e, link.baseUrl))
         }
         // The QR's pin wins; the redeem reply's pin is a fallback for QR codes
         // without one. They must never disagree.
