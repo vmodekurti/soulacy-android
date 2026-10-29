@@ -212,5 +212,3 @@ Ollama) whose `list_dir` tool needs confirmation.
 - **Building inside an iCloud-synced folder** (such as Documents with iCloud Desktop and
   Documents on) can fail with "is defined multiple times". iCloud copies build files as
   `name 2.dex`. Run `./gradlew clean`, or keep the checkout outside iCloud.
-- **No published release yet.** soulacy.io links to this repository's latest release, which only
-  works once the repository is public and a signed release has been published.
