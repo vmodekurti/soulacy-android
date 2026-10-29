@@ -2,6 +2,7 @@ package dev.soulacy.android.pairing
 
 import dev.soulacy.android.api.DeviceRegistration
 import dev.soulacy.android.api.GatewayClient
+import dev.soulacy.android.api.GatewayException
 import dev.soulacy.android.data.Profile
 import dev.soulacy.android.data.ProfileRepository
 import okhttp3.OkHttpClient
@@ -52,16 +53,26 @@ class Pairer(
     suspend fun register(deviceName: String, notificationsEnabled: Boolean): String? {
         val profile = profiles.load() ?: return "Not paired"
         val client = GatewayClient(profile.baseUrl, profiles.token(), profile.fingerprint, http)
+        val registration = DeviceRegistration(
+            id = profiles.deviceId(),
+            name = deviceName,
+            pushToken = profiles.pushToken,
+            notificationsEnabled = notificationsEnabled,
+        )
         return try {
-            client.registerDevice(
-                DeviceRegistration(
-                    id = profiles.deviceId(),
-                    name = deviceName,
-                    pushToken = profiles.pushToken,
-                    notificationsEnabled = notificationsEnabled,
-                )
-            )
+            client.registerDevice(registration)
             null
+        } catch (e: GatewayException) {
+            // A gateway older than Android push support accepts only APNs
+            // tokens and refuses the whole registration. Register without
+            // push so deliveries still work; the app then polls instead.
+            if (e.status != 400 || registration.pushToken.isEmpty()) return e.message ?: "Device registration failed"
+            try {
+                client.registerDevice(registration.copy(pushToken = ""))
+                null
+            } catch (retry: Exception) {
+                retry.message ?: "Device registration failed"
+            }
         } catch (e: Exception) {
             e.message ?: "Device registration failed"
         }

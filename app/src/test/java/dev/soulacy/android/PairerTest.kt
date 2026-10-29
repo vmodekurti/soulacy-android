@@ -56,6 +56,18 @@ class PairerTest {
         assertEquals(base, profiles.load()?.baseUrl)
     }
 
+    @Test fun `a gateway without Android push still registers the phone, without push`() = runTest {
+        profiles.pushToken = "fcm-token:APA91b-not-hex"
+        json(200, """{"paired":true,"token":"sk","subject":"admin","role":"operator"}""")
+        json(400, """{"error":"push_token must be a 32-byte APNs token encoded as hexadecimal"}""")
+        json(201, """{"registered":true}""")
+        val out = Pairer(profiles).pair(PairingLink(base, "ABCDEFGHIJKLMNOP"), "Pixel", true) as PairingOutcome.Paired
+        assertNull(out.registrationError)
+        server.takeRequest() // redeem
+        assertTrue(server.takeRequest().body!!.utf8().contains("\"push_token\":\"fcm-token:APA91b-not-hex\""))
+        assertTrue(server.takeRequest().body!!.utf8().contains("\"push_token\":\"\""))
+    }
+
     @Test fun `expired code stores nothing`() = runTest {
         json(401, """{"paired":false,"reason":"invalid or expired pairing code"}""")
         val out = Pairer(profiles).pair(PairingLink(base, "ABCDEFGHIJKLMNOP"), "Pixel", true)
