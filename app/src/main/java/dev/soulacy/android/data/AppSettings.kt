@@ -2,6 +2,9 @@ package dev.soulacy.android.data
 
 import dev.soulacy.android.pairing.Reachability
 
+/** System follows the phone; the others pin a theme (iOS Settings › Appearance). */
+enum class Appearance(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
+
 /** Small per-install preferences that are not secret. */
 class AppSettings(private val kv: KeyValueStore) {
 
@@ -21,10 +24,16 @@ class AppSettings(private val kv: KeyValueStore) {
         get() = kv.getString(K_REACH)?.let { runCatching { Reachability.valueOf(it) }.getOrNull() }
         set(value) = kv.putStrings(mapOf(K_REACH to value?.name))
 
+    var appearance: Appearance
+        get() = kv.getString(K_APPEARANCE)?.let { runCatching { Appearance.valueOf(it) }.getOrNull() } ?: Appearance.SYSTEM
+        set(value) = kv.putStrings(mapOf(K_APPEARANCE to value.name))
+
+    /** Unpairing forgets the gateway, not the person's look. */
     fun clear() = kv.putStrings(mapOf(K_ONBOARDED to "0", K_REACH to null))
 
     private companion object {
         const val K_ONBOARDED = "onboarding_done"
         const val K_REACH = "reachability"
+        const val K_APPEARANCE = "appearance"
     }
 }

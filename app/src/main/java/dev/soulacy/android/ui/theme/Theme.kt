@@ -100,8 +100,13 @@ object Soulacy {
 }
 
 @Composable
-fun SoulacyTheme(content: @Composable () -> Unit) {
-    val c = if (isSystemInDarkTheme()) Dark else Light
+fun SoulacyTheme(appearance: dev.soulacy.android.data.Appearance = dev.soulacy.android.data.Appearance.SYSTEM, content: @Composable () -> Unit) {
+    val dark = when (appearance) {
+        dev.soulacy.android.data.Appearance.SYSTEM -> isSystemInDarkTheme()
+        dev.soulacy.android.data.Appearance.LIGHT -> false
+        dev.soulacy.android.data.Appearance.DARK -> true
+    }
+    val c = if (dark) Dark else Light
     val scheme = if (c.dark) {
         darkColorScheme(
             primary = c.brand, onPrimary = Color(0xFF00242A), primaryContainer = c.brandDeep, onPrimaryContainer = Color.White,

@@ -64,8 +64,20 @@ import dev.soulacy.android.ui.home.HomeScreen
 import dev.soulacy.android.ui.inbox.ApprovalDetailScreen
 import dev.soulacy.android.ui.inbox.InboxScreen
 import dev.soulacy.android.ui.onboarding.Onboarding
+import dev.soulacy.android.api.WebsiteConnection
+import dev.soulacy.android.api.Workspace
+import dev.soulacy.android.ui.settings.SafeUndoPage
+import dev.soulacy.android.ui.settings.SettingsPage
 import dev.soulacy.android.ui.settings.SettingsScreen
-import dev.soulacy.android.ui.settings.UndoScreen
+import dev.soulacy.android.ui.workspace.AboutYouPage
+import dev.soulacy.android.ui.workspace.ActivityPage
+import dev.soulacy.android.ui.workspace.AutopilotPage
+import dev.soulacy.android.ui.workspace.BoardPage
+import dev.soulacy.android.ui.workspace.DiagnosticsPage
+import dev.soulacy.android.ui.workspace.LearningPage
+import dev.soulacy.android.ui.workspace.MemoryPage
+import dev.soulacy.android.ui.workspace.WebsiteAccessPage
+import dev.soulacy.android.ui.workspace.WebsiteSignInPage
 import dev.soulacy.android.ui.theme.Soulacy
 import dev.soulacy.android.ui.theme.SoulacyBackground
 import dev.soulacy.android.ui.theme.SoulacyTheme
@@ -88,7 +100,10 @@ class MainActivity : FragmentActivity() {
             override fun onStart(owner: LifecycleOwner) = vm.onForeground()
             override fun onStop(owner: LifecycleOwner) = vm.onBackground()
         })
-        setContent { SoulacyTheme { SoulacyBackground { Root() } } }
+        setContent {
+            val appearance by vm.state.collectAsStateWithLifecycle()
+            SoulacyTheme(appearance.appearance) { SoulacyBackground { Root() } }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -127,6 +142,8 @@ class MainActivity : FragmentActivity() {
         val link by linkRequest.collectAsStateWithLifecycle()
         var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
         var openApproval by rememberSaveable { mutableStateOf<String?>(null) }
+        var settingsPage by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
+        var signingIn by remember { mutableStateOf<WebsiteConnection?>(null) }
         var refreshing by remember { mutableStateOf(false) }
         val snack = remember { SnackbarHostState() }
         val app = LocalContext.current.applicationContext as SoulacyApp
@@ -160,7 +177,33 @@ class MainActivity : FragmentActivity() {
         }
 
         // Full-screen layers over the tabs, in the order Back unwinds them.
-        s.undoAgent?.let { a -> UndoScreen(a, s.undoJobs, s.undoMessage, onBack = vm::closeUndo); return }
+        // Settings pages and the website sign-in, full screen over the tabs.
+        val ws = remember(profile.baseUrl, profile.keyId) { app.profiles.client()?.let(::Workspace) }
+        val address = profile.baseUrl
+        signingIn?.let { c ->
+            if (ws != null) {
+                WebsiteSignInPage(ws, address, c, onBack = { signingIn = null }) { signingIn = null; vm.showMessage("Saved. Agents can use ${c.name.ifBlank { "this site" }} as you.") }
+                return
+            }
+        }
+        s.undoAgent?.let { a -> if (ws != null) { SafeUndoPage(ws, address, s.agents, a.id, onBack = vm::closeUndo); return } }
+        settingsPage?.let { page ->
+            if (ws != null) {
+                val back = { settingsPage = null }
+                when (page) {
+                    SettingsPage.DIAGNOSTICS -> DiagnosticsPage(ws, address, BuildConfig.VERSION_NAME, back)
+                    SettingsPage.ABOUT_YOU -> AboutYouPage(ws, address, back)
+                    SettingsPage.MEMORY -> MemoryPage(ws, address, back)
+                    SettingsPage.WEBSITES -> WebsiteAccessPage(ws, address, back) { signingIn = it }
+                    SettingsPage.ACTIVITY -> ActivityPage(ws, address, agentName, back)
+                    SettingsPage.AUTOPILOT -> AutopilotPage(ws, address, agentName, back)
+                    SettingsPage.SAFE_UNDO -> SafeUndoPage(ws, address, s.agents, null, back)
+                    SettingsPage.BOARD -> BoardPage(ws, address, agentName, back)
+                    SettingsPage.LEARNING -> LearningPage(ws, address, s.agents, back)
+                }
+                return
+            }
+        }
         openApproval?.let { id ->
             val a = s.approvals.firstOrNull { it.callId == id }
             if (a != null) {
@@ -254,7 +297,8 @@ class MainActivity : FragmentActivity() {
                     Tab.SETTINGS -> SettingsScreen(
                         profile = profile, reachability = s.reachability, connection = s.connection,
                         pushEnabled = PushSetup.enabled, canNotify = app.notifier.canNotify(),
-                        onEnableNotifications = ::askForNotifications, onUnpair = vm::unpair,
+                        appearance = s.appearance, onAppearance = vm::setAppearance,
+                        onEnableNotifications = ::askForNotifications, onOpen = { settingsPage = it }, onUnpair = vm::unpair,
                     )
                 }
             }

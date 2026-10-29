@@ -15,7 +15,6 @@ import dev.soulacy.android.api.GatewayException
 import dev.soulacy.android.api.GatewayJson
 import dev.soulacy.android.api.PendingApproval
 import dev.soulacy.android.api.ApprovalsResponse
-import dev.soulacy.android.api.SafeUndoJob
 import dev.soulacy.android.data.Conversation
 import dev.soulacy.android.data.Profile
 import dev.soulacy.android.data.StoredMessage
@@ -77,8 +76,7 @@ data class UiState(
     val genie: ChatState? = null,
     val chat: ChatState? = null,
     val undoAgent: Agent? = null,
-    val undoJobs: List<SafeUndoJob> = emptyList(),
-    val undoMessage: String? = null,
+    val appearance: dev.soulacy.android.data.Appearance = dev.soulacy.android.data.Appearance.SYSTEM,
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -103,6 +101,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             profile = profile,
             onboardingDone = app.settings.onboardingDone(profile != null),
             reachability = app.settings.reachability,
+            appearance = app.settings.appearance,
             agents = agents?.first?.let(::chatAgents).orEmpty(),
             agentsUpdated = agents?.second,
             approvals = approvals?.first.orEmpty(),
@@ -403,25 +402,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     // --- Safe Undo (read-only on the phone) ---
 
-    fun openUndo(agent: Agent) {
-        _state.update { it.copy(undoAgent = agent, undoJobs = emptyList(), undoMessage = "Loading receipts") }
-        viewModelScope.launch {
-            val client = app.profiles.client() ?: return@launch
-            try {
-                val jobs = client.safeUndoJobs(agent.id)
-                _state.update { it.copy(undoJobs = jobs, undoMessage = if (jobs.isEmpty()) "No Safe Undo receipts for this agent." else null) }
-            } catch (e: GatewayException) {
-                val msg = when (e.status) {
-                    403 -> "This phone's credential can't open Safe Undo. Review and undo changes in the web workspace."
-                    503 -> "Safe Undo is not enabled on this gateway."
-                    else -> e.message
-                }
-                _state.update { it.copy(undoMessage = msg) }
-            } catch (e: Exception) {
-                _state.update { it.copy(undoMessage = ConnectionProblem.describe(e, client.base.toString())) }
-            }
-        }
-    }
+    /** Safe Undo for [agent], opened from a chat's menu; Settings › Safe Undo opens it too. */
+    fun openUndo(agent: Agent) = _state.update { it.copy(undoAgent = agent) }
 
     fun closeUndo() = _state.update { it.copy(undoAgent = null) }
+
+    fun setAppearance(a: dev.soulacy.android.data.Appearance) {
+        app.settings.appearance = a
+        _state.update { it.copy(appearance = a) }
+    }
 }

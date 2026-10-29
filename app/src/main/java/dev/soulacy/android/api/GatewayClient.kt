@@ -113,6 +113,17 @@ class GatewayClient(
         }
     }.flowOn(Dispatchers.IO)
 
+    // --- feature APIs (see Workspace) ---
+
+    /** GET [path] and decode its JSON body. */
+    suspend inline fun <reified T> fetch(path: String): T = GatewayJson.decodeFromString(send("GET", path).second)
+
+    /** Any method, optional JSON body; returns status and body. Throws on non-2xx unless [allowError]. */
+    suspend fun send(method: String, path: String, json: String? = null, allowError: Boolean = false): Pair<Int, String> {
+        val body = json?.toRequestBody(JSON) ?: if (method == "GET" || method == "DELETE") null else "{}".toRequestBody(JSON)
+        return call(request(path).method(method, body).build(), allowError)
+    }
+
     // --- plumbing ---
 
     private suspend inline fun <reified T> get(path: String): T {
