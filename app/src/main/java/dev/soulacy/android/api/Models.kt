@@ -36,7 +36,9 @@ data class Agent(
 data class AgentInterface(
     val surfaces: List<String> = emptyList(),
     @SerialName("chat_eligible") val chatEligible: Boolean = true,
-    @SerialName("disabled_reason") val disabledReason: String? = null,
+    // An object today ({field, problem, fix}); kept as raw JSON so a change
+    // in its shape can never stop the whole agent list from loading.
+    @SerialName("disabled_reason") val disabledReason: JsonElement? = null,
 )
 
 @Serializable
@@ -54,6 +56,9 @@ data class PendingApproval(
     @SerialName("agent_id") val agentId: String = "",
     @SerialName("session_id") val sessionId: String = "",
     @SerialName("created_at") val createdAt: String = "",
+    // Sent by gateways that time approvals out explicitly; otherwise the
+    // app assumes the same 15 minutes as iOS.
+    @SerialName("expires_at") val expiresAt: String? = null,
 )
 
 @Serializable

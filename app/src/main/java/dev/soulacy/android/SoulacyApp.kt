@@ -2,7 +2,10 @@ package dev.soulacy.android
 
 import android.app.Application
 import android.os.Build
+import dev.soulacy.android.data.AppSettings
+import dev.soulacy.android.data.ConversationStore
 import dev.soulacy.android.data.PrefsKeyValueStore
+import dev.soulacy.android.data.ResponseCache
 import dev.soulacy.android.data.ProfileRepository
 import dev.soulacy.android.notify.AttentionSync
 import dev.soulacy.android.notify.AttentionTracker
@@ -21,6 +24,12 @@ class SoulacyApp : Application() {
         private set
     lateinit var pairer: Pairer
         private set
+    lateinit var settings: AppSettings
+        private set
+    lateinit var cache: ResponseCache
+        private set
+    lateinit var conversations: ConversationStore
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -28,6 +37,10 @@ class SoulacyApp : Application() {
         notifier = Notifier(this).also { it.ensureChannels() }
         sync = AttentionSync(profiles, AttentionTracker(PrefsKeyValueStore(this, "soulacy_attention")), notifier)
         pairer = Pairer(profiles)
+        settings = AppSettings(PrefsKeyValueStore(this, "soulacy_settings"))
+        // noBackupFilesDir: never copied by Auto Backup or device transfer.
+        cache = ResponseCache(java.io.File(noBackupFilesDir, "cache"))
+        conversations = ConversationStore(java.io.File(noBackupFilesDir, "conversations"))
         if (profiles.load() != null) SyncWorker.schedule(this)
         PushSetup.start(this)
     }

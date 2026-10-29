@@ -59,7 +59,7 @@ class PairerTest {
     @Test fun `expired code stores nothing`() = runTest {
         json(401, """{"paired":false,"reason":"invalid or expired pairing code"}""")
         val out = Pairer(profiles).pair(PairingLink(base, "ABCDEFGHIJKLMNOP"), "Pixel", true)
-        assertEquals(PairingOutcome.Failed("invalid or expired pairing code"), out)
+        assertTrue((out as PairingOutcome.Failed).message.startsWith("That pairing code is invalid or has expired."))
         assertNull(profiles.load())
         assertEquals("", profiles.token())
     }

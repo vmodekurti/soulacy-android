@@ -1,3 +1,5 @@
 <resources>
-    <style name="Theme.Soulacy" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Soulacy" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/canvas_light</item>
+    </style>
 </resources>
