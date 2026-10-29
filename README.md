@@ -5,37 +5,63 @@ counterpart of the iOS app. Your gateway runs the agents, holds their memory and
 every permission. The phone is where you talk to them, follow their results and decide
 when an agent asks for approval.
 
-| Pair | Chat | Approve in chat | Approvals | Notification | Inbox |
-|---|---|---|---|---|---|
-| ![](docs/screenshots/pair-confirm.png) | ![](docs/screenshots/chat-reply.png) | ![](docs/screenshots/approval-in-chat.png) | ![](docs/screenshots/approvals-tab.png) | ![](docs/screenshots/notification.png) | ![](docs/screenshots/inbox.png) |
+| Welcome | Home | Inbox | Approval | Chat | Agents | Genie |
+|---|---|---|---|---|---|---|
+| ![](docs/screenshots/welcome.png) | ![](docs/screenshots/home.png) | ![](docs/screenshots/inbox.png) | ![](docs/screenshots/approval-detail.png) | ![](docs/screenshots/chat-approval.png) | ![](docs/screenshots/agents.png) | ![](docs/screenshots/genie.png) |
 
 All screenshots come from the emulator run against a local gateway described under
-[Verified end to end](#verified-end-to-end).
+[Verified end to end](#verified-end-to-end). More are in `docs/screenshots/`, including
+light mode.
 
 ## What it does
 
-- **QR pairing**, the same flow as iOS. It scans the gateway's single-use code (or takes the
-  pasted link), redeems it for a scoped `mobile-companion` credential and registers this
-  install for deliveries. It shows the address before connecting and warns about unencrypted
-  `http://` addresses.
-- **Agents and streaming chat.** It lists the gateway's chat agents and streams replies token
-  by token over `POST /api/v1/chat/stream` (server-sent events). Stop cancels the run.
-- **Approvals.**
-  - When an agent hits a confirmation gate, the app shows it two ways: inline in the chat (the
-    `tool_confirm` event) and in the Approvals tab, which lists every approval pending for you,
-    including ones from runs you started elsewhere.
-  - Approve and Deny first require the device lock (fingerprint, face or screen-lock PIN), like
-    Face ID on iOS. A phone with no screen lock cannot approve.
-  - Website purchase approvals (`commit_website_action`) show their full arguments for review.
-- **Notifications.**
-  - Approvals arrive on a high-priority channel. Results from scheduled and long-running agents
-    arrive on a default channel, and the Inbox holds them.
-  - Notification text is generic (agent and tool names only), and tapping one opens the right
-    tab. The content is always fetched from the gateway.
-- **Safe Undo receipts, read-only.** Each agent's receipts list is one tap from the chat.
-  Preview, apply and undo stay on the web: they need `agents:write`, which the phone credential
-  does not have.
-- **Unpair** in Settings revokes this phone's credential on the gateway.
+The layout, look and wording follow the iOS app: the same tabs, onboarding steps and palette
+(sea accent on a navy-to-teal field), and the same per-agent avatar colours.
+
+- **Onboarding**, step for step like iOS:
+  - a welcome screen, then **connect** (scan the QR, or paste the pairing link) and a check
+    of the gateway address, with a warning for unencrypted `http://`
+  - **verifying**, where failures are named: unknown host, timeout, nothing listening,
+    certificate or pin mismatch, expired code, phone already paired
+  - **where the gateway is reachable from** (home network, VPN or tunnel, anywhere). Later
+    connection errors use that answer ("is this phone on your home network?").
+  - **notifications**, with the reason shown before Android asks
+  - landing on the Inbox
+- **Five tabs: Home, Inbox, Genie, Agents, Settings.**
+  - **Home** is the feed. Approvals waiting for you sit on top as "Needs you" cards. Results
+    from agents follow as cards with formatted text, Reply in Chat, Copy and Share.
+  - **Inbox** holds decisions with deadlines, grouped as "Expiring soon" (under 3 minutes)
+    and "Waiting on you", each with a live countdown. Swipe to deny; tap for the detail view.
+    The tab badge counts pending approvals only.
+  - **Genie** is a conversation with the gateway's `genie` agent, with the iOS suggestions on
+    an empty conversation.
+  - **Agents** ("Your agent team") shows a status summary, a card per agent and recent
+    conversations.
+  - **Settings** shows the gateway, connection state, reachability, notifications, privacy and
+    unpair.
+- **Approval detail** shows what is asked, by which agent and why, and the countdown. The
+  arguments are readable:
+  - lists lead with their size ("14 items"), because the count is the blast radius
+  - long values are shortened
+  - credential-shaped keys are hidden
+  - Deny is on the left and Approve on the right. Every decision passes the device lock
+    (fingerprint, face or screen-lock PIN), like Face ID on iOS. A phone with no screen lock
+    cannot approve.
+- **Chat:**
+  - replies stream in token by token over `POST /api/v1/chat/stream`, with Markdown (headings,
+    lists, code, quotes, links)
+  - a working line ("Thinking", "Waiting for your approval", "Running list_dir") with elapsed
+    time
+  - the approval card inline, long-press to copy or share, and Stop
+  - a reply keeps arriving after you leave the conversation
+  - conversations are kept on the phone only, so you can come back to them
+- **Offline first.** Lists render from the last good copy with an "Updated 4 min ago" footer.
+  The connection shows as a thin line under the title bar, never a dialog.
+- **Notifications** use a high-priority channel for approvals and a default one for results.
+  The text is generic (agent and tool names); tapping opens the approval or the feed. The
+  content is always fetched from the gateway.
+- **Safe Undo receipts, read-only**, from a chat's menu. Preview, apply and undo stay on the
+  web: they need `agents:write`, which the phone credential does not have.
 
 ## Privacy and security
 
@@ -136,21 +162,27 @@ Keep an offline backup of the keystore. Android only installs updates signed wit
 
 ## Verified end to end
 
-Run on the API 36 emulator against a local gateway built from soulacy-personal#385, with a
-throwaway workspace and a test agent (`glm-4.7-flash` on Ollama) whose `list_dir` tool needs
-confirmation:
+Run on the API 36 emulator, in dark and light mode, against a local gateway built from
+soulacy-personal#385. It used a throwaway workspace and a test agent (`glm-4.7-flash` on
+Ollama) whose `list_dir` tool needs confirmation.
 
-- **Pair:** pasted link, address check, redeem (200), device registration (201). The gateway
-  then listed the phone as paired.
-- **Credential storage:** the paired credential survived an app reinstall (Keystore-sealed).
-- **Chat:** the reply streamed in, and Stop and Back work.
-- **Approve in chat:** the inline card, then the device-lock PIN, then `POST /approvals/:id/approve`
-  (200). The tool ran and the agent answered "3 entries", which matched the folder.
-- **Deny from the Approvals tab:** the approval was pending with a badge and a notification; the
-  PIN prompt passed, deny returned 200, and the notification was withdrawn.
-- **Result notification:** a delivery through the gateway's mobile channel test produced a
-  notification. Tapping it opened the Inbox with the content.
-- **Unpair:** returned 200, after which the gateway reported `paired: false`.
+- **Onboarding from a clean install:** welcome, paste link, address check, verify (redeem 200,
+  device registration 201), reachability, the notification reason screen and then Android's
+  permission prompt, "You're connected", landing on the Inbox.
+- **Chat:** the "Waiting for your approval" line and the inline approval card appeared. The
+  conversation was left while it waited.
+- **The same approval elsewhere:** it appeared as a "Needs you" card on Home and in the Inbox
+  with a countdown and badge.
+- **Approve:** from the detail view, then the device-lock PIN, then
+  `POST /approvals/:id/approve` (200). The reply ("There are 3 entries in the agents folder.",
+  correct) arrived while the conversation was closed and is in its history.
+- **Markdown:** a result with a heading, bold and italic text, a list, inline code, a quote, a
+  code block and a link rendered on Home.
+- **Genie:** the empty state and a suggestion sent a message. The test model refused Genie's
+  full prompt (over its 16K-token budget), and the app showed that as a plain sentence with
+  the gateway's detail.
+- **Earlier MVP run:** deny from the Inbox, the notification deep link to the Inbox,
+  unpair, and the credential surviving a reinstall.
 
 ## Not done yet
 
@@ -169,7 +201,16 @@ confirmation:
   - household profile switching and multiple gateways
 - **No notification actions.** Approvals always open the app, so the decision passes the device
   lock in the app.
-- **No instrumented UI tests yet.** Unit tests cover the API, pairing, pinning, secret sealing
-  and sync layers.
+- **No instrumented UI tests yet.** Unit tests cover the API, pairing, pinning, secret sealing,
+  sync, Markdown, approval timing and arguments, conversation storage and error wording.
+- **iOS screens not ported yet:**
+  - Activity (runs and schedules)
+  - Board (workboard)
+  - the story rail and archive on Home
+  - attachments and voice in chat
+  - multiple gateway profiles
+- **Building inside an iCloud-synced folder** (such as Documents with iCloud Desktop and
+  Documents on) can fail with "is defined multiple times". iCloud copies build files as
+  `name 2.dex`. Run `./gradlew clean`, or keep the checkout outside iCloud.
 - **No published release yet.** soulacy.io links to this repository's latest release, which only
   works once the repository is public and a signed release has been published.
