@@ -42,8 +42,14 @@ object PushSetup {
         }
     }
 
+    /**
+     * Called at every app start and whenever Firebase issues a new token.
+     * Registers even when the token is unchanged: a gateway that lacked
+     * Android push refused the token at pairing (Pairer then registered
+     * without it), and once that gateway is upgraded this is what hands it
+     * the token. The registration is an upsert, so repeating it is harmless.
+     */
     fun onToken(app: SoulacyApp, token: String) {
-        if (token == app.profiles.pushToken) return
         app.profiles.pushToken = token
         if (app.profiles.load() == null) return
         scope.launch { app.pairer.register(app.deviceName, app.notifier.canNotify()) }
